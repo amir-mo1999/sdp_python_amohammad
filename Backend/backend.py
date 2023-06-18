@@ -36,7 +36,7 @@ def join_census_and_state_data():
             .isna()
             .any(axis=1)
         )
-        print("No coordinates for following states:")
+        print("No coordinates for the following states:")
         print(census_and_state_data.loc[nan_coordinates, "State"].unique())
 
 
@@ -56,6 +56,7 @@ def add_census_data():
         status=400,
         mimetype="application/json",
     )
+
     # request may not contain any form data
     if len(request.form) != 0:
         return bad_response
@@ -130,11 +131,12 @@ def add_census_data():
     if not all(column in census_data.columns for column in required_columns):
         return bad_response
 
+    # call function to join census and state data
     join_census_and_state_data()
 
     # return success
     return app.response_class(
-        response=json.dumps({"message": "Sucess"}),
+        response=json.dumps({"message": "Success"}),
         status=200,
         mimetype="application/json",
     )
@@ -222,14 +224,56 @@ def add_state_data():
         }
     )
 
+    # call function to join census and state data
     join_census_and_state_data()
 
     # return success
     return app.response_class(
-        response=json.dumps({"message": "Sucess"}),
+        response=json.dumps({"message": "Success"}),
         status=200,
         mimetype="application/json",
     )
+
+
+@app.route("/get-state-locations-with-attribute/<attribute>", methods=["GET"])
+def get_state_locations_with_attribute(attribute):
+    global census_and_state_data
+
+    # wrapper function that returns response for successful requests
+    def get_200_response(data):
+        return app.response_class(
+            response=json.dumps({"data": data}),
+            status=200,
+            mimetype="application/json",
+        )
+
+    # if census and state data is not set return an empty string as data
+    if census_and_state_data is None:
+        return get_200_response("")
+
+    # return DataFrame view as dict if attribute is in DataFrame
+    if attribute in census_and_state_data.columns:
+        # view of the DataFrame containing the given attribute, State, latitude and longitude
+        return_df = census_and_state_data.loc[
+            :,
+            [
+                attribute,
+                "State",
+                "state_latitude",
+                "state_longitude",
+            ],
+        ]
+
+        # return view as dictionary
+        return get_200_response(return_df.to_dict())
+
+    # if attribute not found return 404 response
+    else:
+        return app.response_class(
+            response=json.dumps({"message": "Attribute not found."}),
+            status=404,
+            mimetype="application/json",
+        )
 
 
 @app.route("/")
