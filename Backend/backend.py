@@ -2,6 +2,7 @@ from flask import Flask
 from flask import request
 import pandas as pd
 import json
+from typing import List
 
 app = Flask(__name__)
 
@@ -9,61 +10,59 @@ app = Flask(__name__)
 census_data: pd.DataFrame = None
 state_data: pd.DataFrame = None
 census_and_state_data: pd.DataFrame = None
+census_data_req_columns: List = [
+    "CountyId",
+    "State",
+    "County",
+    "TotalPop",
+    "Men",
+    "Women",
+    "Hispanic",
+    "White",
+    "Black",
+    "Native",
+    "Asian",
+    "Pacific",
+    "VotingAgeCitizen",
+    "Income",
+    "IncomeErr",
+    "IncomePerCap",
+    "IncomePerCapErr",
+    "Poverty",
+    "ChildPoverty",
+    "Professional",
+    "Service",
+    "Office",
+    "Construction",
+    "Production",
+    "Drive",
+    "Carpool",
+    "Transit",
+    "Walk",
+    "OtherTransp",
+    "WorkAtHome",
+    "MeanCommute",
+    "Employed",
+    "PrivateWork",
+    "PublicWork",
+    "SelfEmployed",
+    "FamilyWork",
+    "Unemployment",
+]
 
 
-def join_census_and_state_data():
+def get_file_from_request(request):
     """
-    Merges the two DataFrames census_data and state_data into
-    the census_and_state_data DataFrame by adding state coordinates to census_data.
-    States for which no coordinate data is given in state_data are printed to the console and
-    their coordinates in the final merged DataFrame are set to NaN.
+    Retrieves file from request and performs validation:
+    - request only contains one file
+    - file has a .csv or .txt extension
+
+    Returns file if validation is successful and False otherwise.
     """
-    # retrieve global variables
-    global census_data, state_data, census_and_state_data
-
-    # join census and state data if both are set
-    if census_data is not None and state_data is not None:
-        census_and_state_data = census_data.merge(
-            state_data, how="left", on="State"
-        )
-
-        # infer object dtypes
-        census_and_state_data = census_and_state_data.infer_objects()
-
-        # print out states from census data that do not exist in state data
-        nan_coordinates = (
-            census_and_state_data[["state_latitude", "state_longitude"]]
-            .isna()
-            .any(axis=1)
-        )
-        print("No coordinates for the following states:")
-        print(census_and_state_data.loc[nan_coordinates, "State"].unique())
-
-
-@app.route("/add-census-data", methods=["POST"])
-def add_census_data():
-    # response to return for bad requests
-    bad_response = app.response_class(
-        response=json.dumps(
-            {
-                "message": (
-                    "Request body must contain a single .csv"
-                    " file holding the comma separated USA census"
-                    " data and may not contain any form data."
-                )
-            }
-        ),
-        status=400,
-        mimetype="application/json",
-    )
-
-    # request may not contain any form data
-    if len(request.form) != 0:
-        return bad_response
 
     # file data may only have one key
     if len(request.files.keys()) != 1:
-        return bad_response
+        return None
 
     # retrieve file data key
     key = list(request.files.keys())[0]
@@ -73,62 +72,75 @@ def add_census_data():
 
     # file data may only contain one file
     if len(request_files) != 1:
-        return bad_response
+        return None
 
     # retrieve file
     request_file = request_files[0]
 
     # file must have .csv extension
-    if not request_file.filename.endswith(".csv"):
-        return bad_response
+    if not (
+        request_file.filename.endswith(".csv")
+        or request_file.filename.endswith(".txt")
+    ):
+        return None
 
-    # the .csv file must contain the following columns
-    required_columns = [
-        "CountyId",
-        "State",
-        "County",
-        "TotalPop",
-        "Men",
-        "Women",
-        "Hispanic",
-        "White",
-        "Black",
-        "Native",
-        "Asian",
-        "Pacific",
-        "VotingAgeCitizen",
-        "Income",
-        "IncomeErr",
-        "IncomePerCap",
-        "IncomePerCapErr",
-        "Poverty",
-        "ChildPoverty",
-        "Professional",
-        "Service",
-        "Office",
-        "Construction",
-        "Production",
-        "Drive",
-        "Carpool",
-        "Transit",
-        "Walk",
-        "OtherTransp",
-        "WorkAtHome",
-        "MeanCommute",
-        "Employed",
-        "PrivateWork",
-        "PublicWork",
-        "SelfEmployed",
-        "FamilyWork",
-        "Unemployment",
-    ]
+    return request_file
+
+
+def join_census_and_state_data():
+    # retrieve global variables
+    global census_data, state_data, census_and_state_data
+
+    # join census and state data if both are set
+    if census_data is not None and state_data is not None:
+        # add coordinates for Puerto Rico if its not in state Data
+        if "Puerto Rico" not in state_data["State"].tolist():
+            state_data.loc[len(state_data)] = {
+                "State": "Puerto Rico",
+                "state_latitude": 18.46633000,
+                "state_longitude": -66.10572000,
+            }
+
+        # merge state and census data
+        census_and_state_data = census_data.merge(
+            state_data, how="left", on="State"
+        )
+
+        # infer object dtypes
+        census_and_state_data = census_and_state_data.infer_objects()
+
+
+@app.route("/add-census-data", methods=["POST"])
+def add_census_data():
+    # response to return for bad requests
+    bad_response = app.response_class(
+        response=json.dumps(
+            {
+                "message": (
+                    "Request body must contain a single .csv or .txt file"
+                    " file holding the comma separated USA census data."
+                )
+            }
+        ),
+        status=400,
+        mimetype="application/json",
+    )
+
+    request_file = get_file_from_request(request)
+
+    # if request does not contain a valid file, return a bad response
+    if request_file is None:
+        return bad_response
 
     # read csv file into pandas DataFrame
     global census_data
     census_data = pd.read_csv(request_file, encoding="utf-8")
 
     # check if required columns are present
-    if not all(column in census_data.columns for column in required_columns):
+    global census_data_req_columns
+    if not all(
+        column in census_data.columns for column in census_data_req_columns
+    ):
         return bad_response
 
     # call function to join census and state data
@@ -149,9 +161,8 @@ def add_state_data():
         response=json.dumps(
             {
                 "message": (
-                    "Request body must contain a single .txt file"
-                    " holding coordinates of US states and may not"
-                    " contain any form data."
+                    "Request body must contain a single .txt or .csv file"
+                    " holding coordinates of US states and may not."
                 )
             }
         ),
@@ -159,61 +170,26 @@ def add_state_data():
         mimetype="application/json",
     )
 
-    # request may not contain any form data
-    if len(request.form) != 0:
+    request_file = get_file_from_request(request)
+
+    # if request does not contain a valid file, return a bad response
+    if request_file is None:
         return bad_response
-
-    # file data may only have one key
-    if len(request.files.keys()) != 1:
-        return bad_response
-
-    # retrieve file data key
-    key = list(request.files.keys())[0]
-
-    # retrieve file data
-    request_files = request.files.getlist(key)
-
-    # file data should only contain one file
-    if len(request_files) != 1:
-        return bad_response
-
-    # retrieve file
-    request_file = request_files[0]
-
-    # file must have a .txt extension
-    if not request_file.filename.endswith(".txt"):
-        return bad_response
-
-    # retrieve data for each state iteratively since file does not
-    # have a consistent separator
-    states = []
-    latitudes = []
-    longitudes = []
-    for line in request_file.stream.read().decode("utf-8").split("\n"):
-        # split line on comma + space
-        line_split = line.split(", ")
-
-        # retrieve state
-        states.append(line_split[0])
-
-        # strip second part of the line and replace commas with dots to make
-        # decimal separators consistent
-        line_split[1] = line_split[1].strip().replace(",", ".")
-
-        # retrieve latitude and longitude by splitting on tab stops
-        lat, lng = line_split[1].split("\t")[1:]
-        latitudes.append(lat)
-        longitudes.append(lng)
 
     # save state data as DataFrame
     global state_data
-    state_data = pd.DataFrame.from_dict(
-        {
-            "State": states,
-            "state_latitude": lat,
-            "state_longitude": lng,
-        },
+    state_data = pd.read_csv(
+        request_file,
+        delimiter="\t",
+        encoding="utf-8",
+        names=["State", "state_latitude", "state_longitude"],
     )
+
+    state_data.loc[:, ["state_latitude", "state_longitude"]] = state_data.loc[
+        :, ["state_latitude", "state_longitude"]
+    ].apply(lambda x: x.str.replace(",", "."))
+
+    state_data["State"] = state_data["State"].str.split(",", expand=True)[0]
 
     # cast latitude and longitude columns to float type and State column to object type
     state_data = state_data.astype(
