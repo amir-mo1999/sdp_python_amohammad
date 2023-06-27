@@ -250,8 +250,3 @@ def get_state_locations_with_attribute(attribute):
             status=404,
             mimetype="application/json",
         )
-
-
-@app.route("/")
-def hello():
-    return "<div>Hello World!</div>"
