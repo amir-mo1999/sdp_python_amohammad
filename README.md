@@ -10,7 +10,7 @@
 1. In the Frontend directory create an .env file with following variables:
    - `BACKEND_HOST=Backend`
    - `BACKEND_PORT=5000`
-2. In the Backend directory run: `python wsgi.py`
-3. In the Frontend directory run: `python wsgi.py`
-5. Open dashboard under: [127.0.0.1:5000](http://127.0.0.1:5000/)
+2. Create two environments for the backend and frontend directories respectively using the respective requirements.txt files
+3. Run the command `python wsgi.py` in the backend directory within its respective virtual env and proceed analogically in the frontend directory
+4. Open dashboard under: [127.0.0.1:5000](http://127.0.0.1:5000/)
 
