@@ -240,6 +240,18 @@ def get_state_locations_with_attribute(attribute):
             ],
         ]
 
+        # create grouped df if attribute is not County
+        if attribute != "County":
+            return_df = return_df.groupby("State", as_index=False).agg(
+                {
+                    "state_longitude": "first",
+                    "state_latitude": "first",
+                    attribute: "mean",
+                }
+            )
+
+            return_df[attribute] = return_df[attribute].round(2)
+
         # return view as dictionary
         return get_200_response(return_df.to_dict())
 
