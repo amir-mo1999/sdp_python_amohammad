@@ -249,8 +249,15 @@ def get_state_locations_with_attribute(attribute):
                     attribute: "mean",
                 }
             )
-
             return_df[attribute] = return_df[attribute].round(2)
+        else:
+            return_df = return_df.groupby("State", as_index=False).agg(
+                {
+                    "state_longitude": "first",
+                    "state_latitude": "first",
+                    attribute: lambda x: ", ".join(x.tolist()[:3]) + ", ...",
+                }
+            )
 
         # return view as dictionary
         return get_200_response(return_df.to_dict())

@@ -1,6 +1,3 @@
-# Run this app with `python app.py` and
-# visit http://127.0.0.1:8050/ in your web browser.
-
 from dash import Dash, dcc, html, Input, Output, callback
 import plotly.express as px
 import pandas as pd
@@ -10,11 +7,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# set backend port
+# backend port and base url
 backend_port = os.environ.get("BACKEND_PORT")
+backend_url = f"http://127.0.0.1:{backend_port}/"
 
 
 def set_backend_data():
+    """Sets data within the backend by sending the needed files to the respective endpoints."""
     # files containing data
     files = {
         "census": [
@@ -42,14 +41,14 @@ def set_backend_data():
     # set census data
     requests.request(
         "POST",
-        f"http://127.0.0.1:{backend_port}/add-census-data",
+        backend_url + "add-census-data",
         files=files["census"],
     )
 
     # set state data
     requests.request(
         "POST",
-        f"http://127.0.0.1:{backend_port}/add-state-data",
+        backend_url + "add-state-data",
         files=files["state"],
     )
 
@@ -57,7 +56,7 @@ def set_backend_data():
 def is_backend_data_set():
     """Checks if the data in the backend is set."""
     data = requests.get(
-        f"http://127.0.0.1:{backend_port}/get-state-locations-with-attribute/Walk"
+        backend_url + "get-state-locations-with-attribute/Walk"
     ).json()["data"]
 
     if data == "":
@@ -67,8 +66,9 @@ def is_backend_data_set():
 
 
 def get_map_data(attribute):
+    """Retrieves DataFrame from backend for given attribute."""
     data = requests.get(
-        f"http://127.0.0.1:{backend_port}/get-state-locations-with-attribute/{attribute}"
+        backend_url + f"get-state-locations-with-attribute/{attribute}"
     ).json()["data"]
     df = pd.DataFrame.from_dict(data)
     return df
@@ -84,11 +84,12 @@ attributes = pd.read_csv(
 ).columns
 
 
+# set up app
 app = Dash(__name__)
 app.layout = html.Div(
     [
         dcc.Graph(id="us-map"),
-        dcc.Dropdown(attributes, "Walk", id="attribute-dropdown"),
+        dcc.Dropdown(attributes, "Drive", id="attribute-dropdown"),
     ]
 )
 
@@ -97,22 +98,41 @@ app.layout = html.Div(
     Output("us-map", "figure"),
     Input("attribute-dropdown", "value"),
 )
-def display_us_map(value):
-    us_cities = pd.read_csv(
-        "https://raw.githubusercontent.com/plotly/datasets/master/us-cities-top-1k.csv"
+def display_us_map(attribute_value):
+    # get data
+    df = get_map_data(attribute=attribute_value)
+
+    # normalize values for attributes to determine point size
+    attribute_series = df[attribute_value]
+    attribute_max = attribute_series.max()
+    attribute_min = attribute_series.min()
+    attribute_series = (attribute_series - attribute_min) / (
+        attribute_max - attribute_min
     )
-    print(us_cities)
+    attribute_series *= 10
+    attribute_series = attribute_series.clip(1, 10)
+    # add point size to DataFrame
+    df["size"] = attribute_series
+
+    # create mapbox
     fig = px.scatter_mapbox(
-        get_map_data(attribute=value),
+        df,
         lat="state_latitude",
         lon="state_longitude",
         hover_name="State",
+        hover_data={attribute_value: True, "size": False},
+        size="size",
         color_discrete_sequence=["fuchsia"],
-        zoom=3,
+        zoom=3.5,
         height=300,
+        labels={"state_latitude": "Lat", "state_longitude": "Lon"},
     )
+    # add tiles
     fig.update_layout(mapbox_style="open-street-map")
-    fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
+    # set margins and height
+    fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=500)
+    # make sure map does not reload
+    fig.update_layout(uirevision=True)
 
     return fig
 
