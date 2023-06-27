@@ -3,8 +3,8 @@ from flask import request
 import pandas as pd
 import json
 from typing import List
+from flask import current_app as app
 
-app = Flask(__name__)
 
 # global variables
 census_data: pd.DataFrame = None
@@ -269,3 +269,8 @@ def get_state_locations_with_attribute(attribute):
             status=404,
             mimetype="application/json",
         )
+
+
+@app.route("/")
+def index():
+    return "<div>Hello, World!</div>"
