@@ -9,8 +9,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # backend port and base url
-backend_port = os.environ.get("BACKEND_PORT")
-backend_url = f"http://127.0.0.1:{backend_port}/"
+backend_url = (
+    "http://"
+    + os.environ.get("BACKEND_HOST")
+    + ":"
+    + os.environ.get("BACKEND_PORT")
+    + "/"
+)
 
 
 def set_backend_data():
@@ -151,7 +156,7 @@ def init_dashboard(server):
         # add tiles
         fig.update_layout(mapbox_style="open-street-map")
         # set margins and height
-        fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=450)
+        fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=400)
         # make sure map does not reload
         fig.update_layout(uirevision=True)
 

@@ -273,4 +273,4 @@ def get_state_locations_with_attribute(attribute):
 
 @app.route("/")
 def index():
-    return "<div>Hello, World!</div>"
+    return "<div>Backend is up and running!</div>"

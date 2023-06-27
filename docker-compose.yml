@@ -1,0 +1,32 @@
+version: "1.0"
+
+services:
+  frontend:
+    container_name: census-frontend
+    image: census-frontend
+    build:
+      context: Frontend/.
+    ports:
+      - "5001:5001"
+    networks:
+      - census-network
+    environment:
+      - BACKEND_HOST=Backend
+      - BACKEND_PORT=5000
+    depends_on:
+      - backend
+
+  backend:
+    container_name: census-backend
+    hostname: backend
+    image: census-backend
+    build:
+      context: Backend/.
+    ports:
+      - "5000:5000"
+    networks:
+      - census-network
+
+networks:
+  census-network:
+    driver: bridge
