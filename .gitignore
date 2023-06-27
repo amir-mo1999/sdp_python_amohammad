@@ -1,5 +1,12 @@
 Data/
 
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,flask
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,flask
 
