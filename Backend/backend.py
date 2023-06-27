@@ -228,7 +228,7 @@ def get_state_locations_with_attribute(attribute):
         return get_200_response("")
 
     # return DataFrame view as dict if attribute is in DataFrame
-    if attribute in census_and_state_data.columns:
+    if attribute in census_and_state_data.columns and attribute != "State":
         # view of the DataFrame containing the given attribute, State, latitude and longitude
         return_df = census_and_state_data.loc[
             :,
@@ -255,7 +255,7 @@ def get_state_locations_with_attribute(attribute):
                 {
                     "state_longitude": "first",
                     "state_latitude": "first",
-                    attribute: lambda x: ", ".join(x.tolist()[:3]) + ", ...",
+                    "County": lambda x: ", ".join(x.tolist()[:3]) + ", ...",
                 }
             )
 

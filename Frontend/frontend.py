@@ -3,6 +3,7 @@ import plotly.express as px
 import pandas as pd
 import os
 import requests
+from flask_caching import Cache
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -81,8 +82,8 @@ if not is_backend_data_set():
 # get list of attributes in county data
 attributes = pd.read_csv(
     "Data/acs2017_county_data.csv", index_col="CountyId", header=0
-).columns
-
+).columns.remove("State")
+print(attributes)
 
 # set up app
 app = Dash(__name__)
@@ -130,9 +131,9 @@ def display_us_map(attribute_value):
     # add tiles
     fig.update_layout(mapbox_style="open-street-map")
     # set margins and height
-    fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=500)
+    # fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=100)
     # make sure map does not reload
-    fig.update_layout(uirevision=True)
+    # fig.update_layout(uirevision=True)
 
     return fig
 
